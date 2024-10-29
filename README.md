@@ -9,3 +9,4 @@ Simply copy the raw file location on GitHub & paste into a new tab -> Tampermonk
 ## Existing script install links:
 
 - [roundcube-auto-hide-read](https://github.com/skafau/tampermonkey-scripts/raw/main/src/roundcube-auto-hide-read.user.js)
+- [nextcloud-news-youtube-video-duration](https://github.com/skafau/tampermonkey-scripts/raw/main/src/nextcloud-news-youtube-video-duration.user.js)
