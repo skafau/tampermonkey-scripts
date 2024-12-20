@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Nextcloud News Youtube Video Duration
 // @namespace   Violentmonkey Scripts
-// @version     0.0.1
+// @version     0.0.2
 // @description Show the duration of YouTube videos and the channel name in the Nextcloud News apps compact view
 // @author      skafau
 // @match       https://nc.halumi.at/index.php/apps/news*
