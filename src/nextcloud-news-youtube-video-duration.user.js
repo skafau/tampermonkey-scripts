@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Nextcloud News Youtube Video Duration
 // @namespace   Violentmonkey Scripts
-// @version     0.0.2
+// @version     0.0.3
 // @description Show the duration of YouTube videos and the channel name in the Nextcloud News apps compact view
 // @author      skafau
 // @match       https://nc.halumi.at/index.php/apps/news*
@@ -50,10 +50,18 @@ const observer = new MutationObserver(async (mutations, ob) => {
     const youTubeLink = Array.from(links).find(link => link.href.includes('www.youtube.com'));
     if (!youTubeLink) continue;
 
-    const { duration: durationIso8601, channelTitle } = await getYouTubeVideoInfo(youTubeLink.href);
+    const { duration: durationIso8601, channelTitle, error } = await getYouTubeVideoInfo(youTubeLink.href);
+    if (error) {
+      console.error(`Error fetching video info for ${youTubeLink.href}:`, error);
+      continue;
+    }
+
     const durationInSeconds = parseIso8601DurationToSeconds(durationIso8601);
-    const durationInMinutes = durationInSeconds / 60;
-    const durationInMinutesFormatted = `${Math.round(durationInMinutes)} minutes`;
+    const durationInMinutes = (durationInSeconds ?? 0) / 60;
+    const durationInMinutesFormatted =
+      undefined === durationInSeconds
+        ? `Unparsable length (${durationIso8601})`
+        : `${Math.round(durationInMinutes)} minutes`;
 
     if (titleContainer.querySelector(`.${YT_VIDEO_LENGTH_DIV_CLASS}`)) continue;
 
@@ -70,6 +78,12 @@ async function sleep(ms) {
 }
 
 function getYouTUbeVideoIdFromUrl(url) {
+  const shortsIdx = url.indexOf('/shorts/');
+  if (shortsIdx > 0) {
+    const id = url.substring(shortsIdx + 8);
+    return id;
+  }
+
   const regex =
     /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^&\n]{11})/;
   const match = url.match(regex);
@@ -79,6 +93,8 @@ function getYouTUbeVideoIdFromUrl(url) {
 function parseIso8601DurationToSeconds(duration) {
   const regex = /P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/;
   const match = duration.match(regex);
+
+  if (match === null) return;
 
   const years = match[1] ? parseInt(match[1], 10) : 0;
   const months = match[2] ? parseInt(match[2], 10) : 0;
@@ -100,14 +116,14 @@ function parseIso8601DurationToSeconds(duration) {
 
 async function getYouTubeVideoInfo(videoUrl) {
   const videoId = getYouTUbeVideoIdFromUrl(videoUrl);
-  if (!videoId) throw new Error(`Invalid YouTube URL: ${videoUrl}`);
+  if (!videoId) return { error: `Invalid YouTube URL: ${videoUrl}` };
 
   const apiUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&key=${YT_API_KEY}&part=contentDetails,snippet`;
 
   const response = await fetch(apiUrl);
   const data = await response.json();
-  if (data.error) throw new Error(`Error fetching video info: ${data.error.message}`);
-  if (data.items.length <= 0) throw new Error(`Video not found for URL ${videoUrl}`);
+  if (data.error) return { error: `Error fetching video info: ${data.error.message}` };
+  if (data.items.length <= 0) return { error: `Video not found for URL ${videoUrl}` };
 
   const duration = data.items[0]?.contentDetails.duration;
   const channelTitle = data.items[0].snippet.channelTitle;
